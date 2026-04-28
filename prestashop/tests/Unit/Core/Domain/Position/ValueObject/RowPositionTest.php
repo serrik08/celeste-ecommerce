@@ -1,0 +1,63 @@
+<?php
+/**
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+namespace Tests\Unit\Core\Domain\Position\ValueObject;
+
+use PHPUnit\Framework\TestCase;
+use PrestaShop\PrestaShop\Core\Domain\Position\Exception\PositionConstraintException;
+use PrestaShop\PrestaShop\Core\Domain\Position\ValueObject\RowPosition;
+
+class RowPositionTest extends TestCase
+{
+    /**
+     * @dataProvider getValidValues
+     *
+     * @param int $rowId
+     * @param int $oldPosition
+     * @param int $newPosition
+     */
+    public function testItIsSuccessfullyConstructed(int $rowId, int $oldPosition, int $newPosition): void
+    {
+        $rowPosition = new RowPosition($rowId, $oldPosition, $newPosition);
+        $this->assertEquals($rowId, $rowPosition->getRowId());
+        $this->assertEquals($oldPosition, $rowPosition->getOldPosition());
+        $this->assertEquals($newPosition, $rowPosition->getNewPosition());
+    }
+
+    public function getValidValues(): iterable
+    {
+        yield [1, 1, 2];
+        yield [1, 3, 2];
+        yield [23, 0, 1];
+        yield [45, 1, 0];
+    }
+
+    /**
+     * @dataProvider getInvalidValues
+     *
+     * @param int $rowId
+     * @param int $oldPosition
+     * @param int $newPosition
+     * @param int $expectedErrorCode
+     */
+    public function testItThrowsExceptionWhenInvalidValueIsProvided(int $rowId, int $oldPosition, int $newPosition, int $expectedErrorCode): void
+    {
+        $this->expectException(PositionConstraintException::class);
+        $this->expectExceptionCode($expectedErrorCode);
+
+        new RowPosition($rowId, $oldPosition, $newPosition);
+    }
+
+    public function getInvalidValues(): iterable
+    {
+        yield [0, 1, 2, PositionConstraintException::INVALID_ROW_ID];
+        yield [-1, 1, 2, PositionConstraintException::INVALID_ROW_ID];
+        yield [23, -1, 1, PositionConstraintException::INVALID_OLD_POSITION];
+        yield [23, 1, -1, PositionConstraintException::INVALID_NEW_POSITION];
+    }
+}

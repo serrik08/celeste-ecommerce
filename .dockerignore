@@ -1,0 +1,22 @@
+.git
+.gitignore
+README.md
+*.md
+
+# Dependencias (se instalan dentro del contenedor)
+prestashop/vendor/
+prestashop/node_modules/
+
+# Logs
+prestashop/var/logs/
+prestashop/*.log
+
+# Cache
+prestashop/var/cache/
+
+# Archivos de entorno
+prestashop/app/config/parameters.php
+prestashop/.env.local
+
+# Carpeta de instalación (post-install)
+prestashop/install/

@@ -1,0 +1,30 @@
+# Dependencias
+prestashop/vendor/
+prestashop/node_modules/
+
+# Cache y logs
+prestashop/var/cache/
+prestashop/var/logs/
+prestashop/*.log
+
+# Configuración con credenciales
+prestashop/app/config/parameters.php
+prestashop/.env.local
+
+# Carpeta de instalación (eliminarla post-install es obligatorio)
+prestashop/install/
+
+# Carpeta admin renombrada (contiene sufijo único, no commitear la ruta)
+prestashop/admin*/
+
+# Uploads de la tienda
+prestashop/img/
+prestashop/upload/
+prestashop/download/
+
+# Docker
+.env
+
+# OS
+.DS_Store
+Thumbs.db

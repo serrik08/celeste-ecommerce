@@ -1,0 +1,248 @@
+<?php
+/**
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+namespace Tests\Integration\Behaviour\Features\Context\Domain;
+
+use Behat\Gherkin\Node\TableNode;
+use PHPUnit\Framework\Assert;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Command\AddOrderStateCommand;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Command\BulkDeleteOrderStateCommand;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Command\DeleteOrderStateCommand;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Command\EditOrderStateCommand;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Exception\BulkDeleteOrderStateException;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Exception\DeleteOrderStateException;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Exception\OrderStateException;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Exception\OrderStateNotFoundException;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\Query\GetOrderStateForEditing;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\QueryResult\EditableOrderState;
+use PrestaShop\PrestaShop\Core\Domain\OrderState\ValueObject\OrderStateId;
+use Tests\Integration\Behaviour\Features\Context\SharedStorage;
+
+class OrderStateFeatureContext extends AbstractDomainFeatureContext
+{
+    /**
+     * @Given I add a new order state :orderStateReference with the following details:
+     *
+     * @param string $orderStateReference
+     * @param TableNode $table
+     */
+    public function addNewOrderState(string $orderStateReference, TableNode $table): void
+    {
+        $data = $table->getRowsHash();
+
+        try {
+            /** @var OrderStateId $orderStateId */
+            $orderStateId = $this->getCommandBus()->handle(new AddOrderStateCommand(
+                [
+                    $this->getDefaultLangId() => $data['name'],
+                ],
+                $data['color'],
+                (bool) $data['isLoggable'],
+                (bool) $data['isInvoice'],
+                (bool) $data['isHidden'],
+                (bool) $data['hasSendMail'],
+                (bool) $data['hasPdfInvoice'],
+                (bool) $data['hasPdfDelivery'],
+                (bool) $data['isShipped'],
+                (bool) $data['isPaid'],
+                (bool) $data['isDelivery'],
+                []
+            ));
+
+            SharedStorage::getStorage()->set($orderStateReference, $orderStateId->getValue());
+        } catch (OrderStateException $e) {
+            $this->setLastException($e);
+        }
+    }
+
+    /**
+     * @Given I update the order state :orderStateReference with the following details:
+     *
+     * @param string $orderStateReference
+     * @param TableNode $table
+     */
+    public function updateOrderState(string $orderStateReference, TableNode $table): void
+    {
+        $orderStateId = SharedStorage::getStorage()->get($orderStateReference);
+
+        $editableOrderState = new EditOrderStateCommand((int) $orderStateId);
+
+        $data = $table->getRowsHash();
+        if (isset($data['name'])) {
+            $editableOrderState->setName([
+                $this->getDefaultLangId() => $data['name'],
+            ]);
+        }
+        if (isset($data['color'])) {
+            $editableOrderState->setColor($data['color']);
+        }
+        if (isset($data['isLoggable'])) {
+            $editableOrderState->setLoggable((bool) $data['isLoggable']);
+        }
+        if (isset($data['isInvoice'])) {
+            $editableOrderState->setInvoice((bool) $data['isInvoice']);
+        }
+        if (isset($data['isHidden'])) {
+            $editableOrderState->setHidden((bool) $data['isHidden']);
+        }
+        if (isset($data['hasSendMail'])) {
+            $editableOrderState->setSendEmail((bool) $data['hasSendMail']);
+        }
+        if (isset($data['hasPdfInvoice'])) {
+            $editableOrderState->setPdfInvoice((bool) $data['hasPdfInvoice']);
+        }
+        if (isset($data['isShipped'])) {
+            $editableOrderState->setShipped((bool) $data['isShipped']);
+        }
+        if (isset($data['isPaid'])) {
+            $editableOrderState->setPaid((bool) $data['isPaid']);
+        }
+        if (isset($data['isDelivery'])) {
+            $editableOrderState->setDelivery((bool) $data['isDelivery']);
+        }
+        if (isset($data['template'])) {
+            $editableOrderState->setTemplate([
+                $this->getDefaultLangId() => $data['template'],
+            ]);
+        }
+
+        try {
+            $this->getCommandBus()->handle($editableOrderState);
+        } catch (OrderStateException $e) {
+            $this->setLastException($e);
+        }
+    }
+
+    /**
+     * @When I delete the order state :orderStateReference
+     *
+     * @param string $orderStateReference
+     */
+    public function deleteOrderState(string $orderStateReference): void
+    {
+        $orderStateId = SharedStorage::getStorage()->get($orderStateReference);
+
+        try {
+            $this->getCommandBus()->handle(new DeleteOrderStateCommand($orderStateId));
+        } catch (DeleteOrderStateException $e) {
+            $this->setLastException($e);
+        }
+    }
+
+    /**
+     * @When I bulk delete order states :orderStateReferences
+     *
+     * @param string $orderStateReferences
+     */
+    public function bulkDeleteOrderState(string $orderStateReferences): void
+    {
+        $orderStateReferences = explode(',', $orderStateReferences);
+        $orderStatesId = [];
+        foreach ($orderStateReferences as $orderStateReference) {
+            $orderStatesId[] = SharedStorage::getStorage()->get($orderStateReference);
+        }
+
+        try {
+            $this->getCommandBus()->handle(new BulkDeleteOrderStateCommand($orderStatesId));
+        } catch (BulkDeleteOrderStateException $e) {
+            $this->setLastException($e);
+        }
+    }
+
+    /**
+     * @Then the order state :orderStateReference should have the following details:
+     *
+     * @param string $orderStateReference
+     * @param TableNode $table
+     */
+    public function checkOrderStateDetails(string $orderStateReference, TableNode $table): void
+    {
+        $editableOrderState = $this->getOrderState($orderStateReference);
+
+        $this->assertLastErrorIsNull();
+
+        $data = $table->getRowsHash();
+
+        $localizedNames = $editableOrderState->getLocalizedNames();
+        $localizedTemplates = $editableOrderState->getLocalizedTemplates();
+        Assert::assertIsArray($localizedNames);
+        Assert::assertArrayHasKey($this->getDefaultLangId(), $localizedNames);
+        Assert::assertEquals($data['name'], $localizedNames[$this->getDefaultLangId()]);
+        Assert::assertEquals($data['color'], $editableOrderState->getColor());
+        Assert::assertEquals((bool) $data['hasSendMail'], $editableOrderState->isSendEmailEnabled());
+        Assert::assertIsArray($localizedTemplates);
+        Assert::assertArrayHasKey($this->getDefaultLangId(), $localizedTemplates);
+        Assert::assertEquals($data['template'], $localizedTemplates[$this->getDefaultLangId()]);
+    }
+
+    /**
+     * @Then the order state :orderStateReference should exist
+     *
+     * @param string $orderStateReference
+     */
+    public function checkOrderStateExists(string $orderStateReference): void
+    {
+        $this->getOrderState($orderStateReference);
+
+        $this->assertLastErrorIsNull();
+    }
+
+    /**
+     * @Then the order state :orderStateReference should be deleted
+     *
+     * @param string $orderStateReference
+     */
+    public function checkOrderStateIsDeleted(string $orderStateReference): void
+    {
+        $orderState = $this->getOrderState($orderStateReference);
+
+        Assert::assertTrue($orderState->isDeleted());
+    }
+
+    /**
+     * @Then the order state :orderStateReference shouldn't exist
+     *
+     * @param string $orderStateReference
+     */
+    public function checkOrderStateNotExists(string $orderStateReference): void
+    {
+        $this->getOrderState($orderStateReference);
+
+        $this->assertLastErrorIs(OrderStateNotFoundException::class);
+    }
+
+    /**
+     * @Then the order state :orderStateReference shouldn't be deleted
+     *
+     * @param string $orderStateReference
+     */
+    public function checkOrderStateIsNotDeleted(string $orderStateReference): void
+    {
+        $orderState = $this->getOrderState($orderStateReference);
+
+        Assert::assertFalse($orderState->isDeleted());
+    }
+
+    /**
+     * @param string $orderStateReference
+     *
+     * @return EditableOrderState|null
+     */
+    private function getOrderState(string $orderStateReference): ?EditableOrderState
+    {
+        try {
+            return $this->getQueryBus()->handle(
+                new GetOrderStateForEditing(SharedStorage::getStorage()->get($orderStateReference))
+            );
+        } catch (OrderStateNotFoundException $e) {
+            $this->setLastException($e);
+        }
+
+        return null;
+    }
+}

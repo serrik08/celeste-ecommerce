@@ -4,10 +4,15 @@ FROM php:8.3-apache
 RUN apt-get update && apt-get install -y \
     libpng-dev libjpeg-dev libwebp-dev libfreetype6-dev \
     libzip-dev libicu-dev libxml2-dev libcurl4-openssl-dev \
-    unzip wget git curl nodejs npm && \
+    libonig-dev \
+    unzip wget git curl && \
     docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp && \
     docker-php-ext-install \
     gd pdo pdo_mysql mysqli curl intl mbstring xml zip bcmath soap
+
+# Instalar Node.js 20 desde fuente oficial
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
 
 # Instalar Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

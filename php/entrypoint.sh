@@ -1,32 +1,28 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-echo "🚀 Iniciando Celeste..."
-
-# Instalar dependencias PHP si no están instaladas
-if [ ! -d "/var/www/html/vendor" ]; then
-    echo "📦 Instalando dependencias con Composer..."
-    cd /var/www/html
-    composer install --no-interaction --prefer-dist --optimize-autoloader
-    echo "✅ Composer listo"
+if [ ! -f "/var/www/html/composer.json" ]; then
+  echo "No se encontro composer.json"
+elif [ ! -f "/var/www/html/vendor/autoload.php" ]; then
+  echo "Instalando dependencias Composer..."
+  cd /var/www/html
+  composer install --no-interaction --prefer-dist --optimize-autoloader
+  echo "Composer listo"
 else
-    echo "✅ Dependencias ya instaladas"
+  echo "Dependencias PHP ya instaladas"
 fi
 
-# Compilar assets si node_modules no existe
-if [ ! -d "/var/www/html/node_modules" ]; then
-    echo "🎨 Instalando dependencias Node y compilando assets..."
-    cd /var/www/html
-    npm install
-    npm run build 2>/dev/null || echo "⚠️  Build de assets omitido (puede no ser necesario)"
-    echo "✅ Assets listos"
+if [ -f "/var/www/html/package.json" ] && [ ! -d "/var/www/html/node_modules" ]; then
+  echo "Compilando assets Node..."
+  cd /var/www/html
+  npm install
+  npm run build 2>/dev/null || echo "Build de assets omitido"
 else
-    echo "✅ Assets ya compilados"
+  echo "Paso Node omitido"
 fi
 
-# Permisos correctos
 chown -R www-data:www-data /var/www/html
 chmod -R 755 /var/www/html
 
-echo "🌐 Levantando Apache..."
+echo "Levantando Apache..."
 exec apache2-foreground

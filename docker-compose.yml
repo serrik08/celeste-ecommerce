@@ -10,6 +10,9 @@ services:
       - db
     environment:
       - APACHE_DOCUMENT_ROOT=/var/www/html
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     networks:
       - celeste_network
 

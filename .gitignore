@@ -1,30 +1,29 @@
-# Dependencias
-prestashop/vendor/
-prestashop/node_modules/
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
 
-# Cache y logs
-prestashop/var/cache/
-prestashop/var/logs/
-prestashop/*.log
-
-# Configuración con credenciales
-prestashop/app/config/parameters.php
-prestashop/.env.local
-
-# Carpeta de instalación (eliminarla post-install es obligatorio)
-prestashop/install/
-
-# Carpeta admin renombrada (contiene sufijo único, no commitear la ruta)
-prestashop/admin*/
-
-# Uploads de la tienda
-prestashop/img/
-prestashop/upload/
-prestashop/download/
-
-# Docker
+# Environment
 .env
+.env.local
+.env.*.local
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Medusa
+.medusa/
+uploads/
+
+# Logs
+*.log
+logs/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Docker
+docker-compose.override.yml
